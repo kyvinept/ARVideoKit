@@ -453,29 +453,12 @@ private var renderer: RenderAR!
         A boolean that returns `true` when a video is successfully exported to the Photo Library. Otherwise, it returns `false`.
      */
     @objc public func stopAndExport(_ finished: ((_ videoPath: URL, _ permissionStatus: PHAuthorizationStatus, _ exported: Bool) -> Swift.Void)? = nil) {
-        writerQueue.sync {
-            self.isRecording = false
-            self.adjustPausedTime = false
-            self.backFromPause = false
-            self.recordingWithLimit = false
-            
-            self.pausedFrameTime = nil
-            self.resumeFrameTime = nil
-            
-            self.writer?.end {
-                if let path = self.currentVideoPath {
-                    self.export(video: path) { exported, status in
-                        finished?(path, status, exported)
-                    }
-                    self.delegate?.recorder(didEndRecording: path, with: true)
-                    self.status = .readyToRecord
-                } else {
-                    finished?(self.currentVideoPath!, .notDetermined, false)
-                    self.status = .readyToRecord
-                    self.delegate?.recorder(didFailRecording: errSecDecode as? Error, and: "An error occured while stopping your video.")
-                }
-                self.writer = nil
-            }
+        DispatchQueue.main.async {
+            self.stop({ url in
+                self.export(video: url, { saved, status in
+                    finished?(url, status, saved)
+                })
+            })
         }
     }
     /**
